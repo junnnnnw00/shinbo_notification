@@ -4,20 +4,19 @@ import os
 import time
 import json
 import firebase_admin
-from firebase_admin import credentials, messaging
+from firebase_admin import credentials, messaging, db
 
 # --- 설정 부분 ---
 NOTICE_URL = "https://www.ulsanshinbo.co.kr/04_notice/?mcode=0404010000"
-LAST_POST_FILE = "latest_post.txt" # GitHub Actions 환경에서는 이 파일을 사용하지 않음
 BASE_URL = "https://www.ulsanshinbo.co.kr"
+FCM_TOPIC = "new_notice"
 
-# FCM 알림을 보낼 주제(Topic) 이름. 앱에서도 이 이름으로 구독해야 함.
-FCM_TOPIC = "new_notice" 
+# !!! 중요 !!! 1단계에서 복사한 자신의 Realtime Database URL을 여기에 붙여넣으세요.
+DATABASE_URL = 'https://shinbo-notify-default-rtdb.asia-southeast1.firebasedatabase.app/' 
 
 def initialize_fcm():
-    """FCM 초기화 함수. GitHub Actions의 Secrets를 사용합니다."""
+    """FCM 및 DB 초기화 함수"""
     try:
-        # GitHub Actions Secret에서 받아온 JSON 문자열을 파싱
         firebase_credentials_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
         if not firebase_credentials_json:
             print("오류: FIREBASE_CREDENTIALS_JSON 환경 변수가 설정되지 않았습니다.")
@@ -25,133 +24,108 @@ def initialize_fcm():
 
         cred_json = json.loads(firebase_credentials_json)
         cred = credentials.Certificate(cred_json)
-        firebase_admin.initialize_app(cred)
+        
+        # 이미 초기화되었는지 확인 (GitHub Actions 환경에서 여러번 실행될 수 있음)
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': DATABASE_URL
+            })
         print("-> Firebase Admin SDK 초기화 성공")
         return True
     except Exception as e:
         print(f"오류: Firebase Admin SDK 초기화 실패 - {e}")
         return False
-    
+
+# --- Firebase DB 연동 함수 ---
+def get_last_sent_id_from_db():
+    """DB에서 마지막으로 보낸 공지사항 ID를 가져옵니다."""
+    try:
+        ref = db.reference('state/last_post_id')
+        return ref.get()
+    except Exception as e:
+        print(f"오류: DB에서 마지막 ID를 읽지 못했습니다 - {e}")
+        return None
+
+def save_id_to_db(post_id):
+    """새로운 공지사항 ID를 DB에 저장(덮어쓰기)합니다."""
+    try:
+        ref = db.reference('state')
+        ref.set({'last_post_id': post_id})
+        print(f"-> DB에 새로운 ID 저장 성공: {post_id}")
+    except Exception as e:
+        print(f"오류: DB에 ID를 저장하지 못했습니다 - {e}")
+
+# --- 기존 함수들 (send_fcm_notification, get_latest_post_info) ---
 def send_fcm_notification(title, body, link):
-    """FCM으로 모든 구독자에게 푸시 알림을 보냅니다."""
     try:
         message = messaging.Message(
-            notification=messaging.Notification(
-                title=title,
-                body=body,
-            ),
-            # data 페이로드: 앱이 알림을 받았을 때 추가 정보를 사용할 수 있게 함 (예: 링크)
-            data={
-                'link': link,
-            },
+            notification=messaging.Notification(title=title, body=body),
+            data={'link': link},
             topic=FCM_TOPIC,
         )
-
         response = messaging.send(message)
         print(f"-> FCM 메시지 발송 성공: {response}")
     except Exception as e:
         print(f"오류: FCM 메시지 발송 실패 - {e}")
 
 def get_latest_post_info():
-    """
-    웹사이트에 접속하여 최신 공지사항 정보를 가져옵니다.
-    class="ntc"를 가진 고정 공지는 건너뛰고 가장 위에 있는 일반 게시물을 반환합니다.
-    
-    Returns:
-        tuple: (게시물 번호, 제목, 링크) 형태의 튜플. 최신 글이 없으면 (None, None, None) 반환.
-    """
     try:
         response = requests.get(NOTICE_URL, timeout=10)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"오류: 웹사이트에 접속할 수 없습니다. ({e})")
         return None, None, None
-
     soup = BeautifulSoup(response.text, "html.parser")
-
-    # 게시판 테이블의 모든 행(tr)을 선택
-    # <tbody> 태그 바로 아래에 있는 <tr> 들을 대상으로 함
     rows = soup.select("div.board-text table tbody tr")
-
-    # 고정 공지를 제외한 첫 번째 일반 게시물을 찾기 위해 반복
     for row in rows:
-        # <tr> 태그에 'ntc' 클래스가 있으면 고정 공지이므로 건너뜀
         if 'ntc' in row.get('class', []):
             continue
-
-        # 'ntc' 클래스가 없는 첫 번째 게시물이 우리가 찾는 최신 글
-        # 게시물 번호 추출
         post_number_td = row.select_one("td.num")
         if not post_number_td:
             continue
-        
         post_number = post_number_td.text.strip()
-
-        # 제목과 링크 추출
         subject_td_link = row.select_one("td.link a")
         if subject_td_link:
             title = subject_td_link.text.strip()
             relative_link = subject_td_link['href']
             full_link = BASE_URL + relative_link
-            
-            # 숫자 형태의 게시물 번호, 제목, 전체 링크를 반환하고 함수 종료
             return post_number, title, full_link
-            
-    # 일반 게시물이 하나도 없는 경우
     return None, None, None
 
-def get_last_checked_post():
-    """
-    파일에 저장된 마지막 게시물 번호를 읽어옵니다.
-    파일이 없으면 None을 반환합니다.
-    """
-    if not os.path.exists(LAST_POST_FILE):
-        return None
-    try:
-        with open(LAST_POST_FILE, 'r') as f:
-            return f.read().strip()
-    except IOError as e:
-        print(f"오류: 파일을 읽을 수 없습니다. ({e})")
-        return None
-
-def save_last_checked_post(post_number):
-    """
-    새로운 최신 게시물 번호를 파일에 저장합니다.
-    """
-    try:
-        with open(LAST_POST_FILE, 'w') as f:
-            f.write(str(post_number))
-    except IOError as e:
-        print(f"오류: 파일에 저장할 수 없습니다. ({e})")
-
-# --- 메인 실행 로직 ---
+# --- 메인 실행 로직 (수정됨) ---
 if __name__ == "__main__":
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 신규 공지사항 확인 및 FCM 발송 작업을 시작합니다...")
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 신규 공지사항 확인을 시작합니다...")
 
     if not initialize_fcm():
-        exit() # FCM 초기화 실패 시 작업 중단
+        exit()
 
     latest_post_num, latest_title, latest_link = get_latest_post_info()
 
     if not latest_post_num:
         print("-> 최신 게시물 정보를 가져오는 데 실패했습니다.")
     else:
-        # 여기서는 매번 최신 글 1개를 가져와서 알림을 보내는 대신,
-        # 마지막으로 보낸 글과 비교하는 로직이 필요합니다.
-        # 간단한 구현을 위해, 여기서는 항상 최신 글 1개를 가져와서
-        # "이런 글이 최신글이다" 라고 알림을 보내는 방식으로 단순화 할 수 있습니다.
-        # (더 좋은 방법은 Firebase DB에 마지막 게시물 번호를 저장하고 비교하는 것입니다.)
+        # DB에서 마지막으로 보낸 ID를 가져옴
+        last_sent_id = get_last_sent_id_from_db()
         
-        print("\n★★★ 최신 공지사항 정보 ★★★")
-        print(f"  - 번호: {latest_post_num}")
-        print(f"  - 제목: {latest_title}")
-        print(f"  - 링크: {latest_link}")
-        
-        # FCM 알림 발송
-        send_fcm_notification(
-            title="새 공지사항 알림", 
-            body=latest_title, 
-            link=latest_link
-        )
+        print(f"-> 웹사이트 최신 ID: {latest_post_num}")
+        print(f"-> DB에 저장된 마지막 ID: {last_sent_id or '없음'}")
+
+        # 웹사이트 최신 ID와 DB에 저장된 ID를 비교
+        if str(latest_post_num) != str(last_sent_id):
+            print("\n★★★ 새로운 공지사항 발견! 알림을 발송합니다. ★★★")
+            print(f"  - 번호: {latest_post_num}")
+            print(f"  - 제목: {latest_title}")
+            
+            # 1. FCM 알림 발송
+            send_fcm_notification(
+                title="새 공지사항 알림",
+                body=latest_title,
+                link=latest_link
+            )
+            
+            # 2. 새로 보낸 ID를 DB에 저장
+            save_id_to_db(latest_post_num)
+        else:
+            print("-> 새로운 공지사항이 없습니다. 알림을 발송하지 않습니다.")
     
     print("\n작업을 종료합니다.")
