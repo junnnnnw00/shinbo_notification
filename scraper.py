@@ -6,11 +6,9 @@ import json
 import firebase_admin
 from firebase_admin import credentials, messaging, db
 
-# --- 설정 부분 ---
+# --- 설정 부분 (이전과 동일) ---
 NOTICE_URL = "https://www.ulsanshinbo.co.kr/04_notice/?mcode=0404010000"
 BASE_URL = "https://www.ulsanshinbo.co.kr"
-
-# 사용자의 데이터베이스 URL을 그대로 사용합니다.
 DATABASE_URL = 'https://shinbo-notify-default-rtdb.asia-southeast1.firebasedatabase.app/' 
 
 def initialize_fcm():
@@ -20,27 +18,19 @@ def initialize_fcm():
         if not firebase_credentials_json:
             print("오류: FIREBASE_CREDENTIALS_JSON 환경 변수가 설정되지 않았습니다.")
             return False
-
         cred_json = json.loads(firebase_credentials_json)
         cred = credentials.Certificate(cred_json)
-        
-        # 이미 초기화되었는지 확인
         if not firebase_admin._apps:
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': DATABASE_URL
-            })
+            firebase_admin.initialize_app(cred, {'databaseURL': DATABASE_URL})
         print("-> Firebase Admin SDK 초기화 성공")
         return True
     except Exception as e:
         print(f"오류: Firebase Admin SDK 초기화 실패 - {e}")
         return False
 
-# --- Firebase DB 연동 함수 (수정됨) ---
-
+# --- DB 연동 함수들 (이전과 동일) ---
 def get_last_sent_id_from_db():
-    """DB에서 마지막으로 보낸 공지사항 ID를 가져옵니다."""
     try:
-        # 경로는 이전과 동일 ('state/last_post_id')
         ref = db.reference('state/last_post_id')
         return ref.get()
     except Exception as e:
@@ -48,7 +38,6 @@ def get_last_sent_id_from_db():
         return None
 
 def save_id_to_db(post_id):
-    """새로운 공지사항 ID를 DB에 저장합니다."""
     try:
         ref = db.reference('state')
         ref.set({'last_post_id': post_id})
@@ -56,57 +45,55 @@ def save_id_to_db(post_id):
     except Exception as e:
         print(f"오류: DB에 ID를 저장하지 못했습니다 - {e}")
 
-# --- 웹 푸시를 위한 새로운 함수들 ---
-
 def get_all_tokens_from_db():
-    """DB에서 모든 웹 브라우저 토큰을 가져옵니다."""
     try:
-        # 웹 페이지에서 저장한 토큰들이 있는 경로를 지정합니다. 예: '/tokens'
         ref = db.reference('tokens') 
         tokens_dict = ref.get()
         if not tokens_dict:
             print("-> DB에 저장된 웹 푸시 토큰이 없습니다.")
             return []
-        # { '토큰값1': true, '토큰값2': true } 와 같은 형식이므로, 키(토큰값)만 추출하여 리스트로 만듭니다.
         return list(tokens_dict.keys())
     except Exception as e:
         print(f"오류: DB에서 토큰을 읽지 못했습니다 - {e}")
         return []
 
-def send_fcm_multicast_notification(title, body, link, tokens):
+# --- ★★★ 알림 발송 함수 (수정됨) ★★★ ---
+def send_fcm_to_each_token(title, body, link, tokens):
     """
-    웹 푸시 방식: 여러 토큰(브라우저)에 한 번에 알림을 보냅니다. (Multicast)
+    (수정된 방식) 여러 토큰에 각각 하나씩 알림을 보냅니다.
+    Multicast(일괄 발송) 대신 Send(개별 발송)를 사용합니다.
     """
     if not tokens:
-        # 보낼 토큰이 없으면 함수를 조용히 종료합니다.
         return
 
-    try:
-        # 여러 토큰에 보낼 때는 MulticastMessage를 사용합니다.
-        message = messaging.MulticastMessage(
-            # 웹 푸시에서는 notification 대신 webpush 객체를 사용하는 것이 더 세밀한 제어가 가능합니다.
-            webpush=messaging.WebpushConfig(
-                notification=messaging.WebpushNotification(
-                    title=title,
-                    body=body,
-                    # 알림에 표시될 아이콘 이미지 URL (선택사항)
-                    # icon="https://your-website.com/icon.png" 
+    print(f"-> 총 {len(tokens)}개의 토큰에 개별 발송을 시도합니다...")
+    success_count = 0
+    failure_count = 0
+
+    # 각 토큰에 대해 루프를 돌면서 개별적으로 메시지 발송
+    for token in tokens:
+        try:
+            # 개별 발송에는 Message 객체를 사용합니다.
+            message = messaging.Message(
+                webpush=messaging.WebpushConfig(
+                    notification=messaging.WebpushNotification(
+                        title=title,
+                        body=body,
+                    ),
+                    fcm_options=messaging.WebpushFCMOptions(
+                        link=link
+                    ),
                 ),
-                # 알림 클릭 시 이동할 링크 설정
-                fcm_options=messaging.WebpushFCMOptions(
-                    link=link
-                ),
-            ),
-            tokens=tokens, # DB에서 가져온 모든 토큰 리스트
-        )
-        response = messaging.send_multicast(message)
-        print(f"-> 총 {response.success_count}개의 웹 브라우저에 알림 발송 성공.")
-        if response.failure_count > 0:
-            print(f"-> {response.failure_count}개의 알림 발송 실패.")
-            # 실패한 토큰은 DB에서 삭제하는 로직을 추가할 수 있습니다.
-            # 예: for i, resp in enumerate(response.responses): if not resp.success: print(f"실패 토큰: {tokens[i]}")
-    except Exception as e:
-        print(f"오류: FCM 멀티캐스트 메시지 발송 실패 - {e}")
+                token=token, # 개별 토큰 지정
+            )
+            messaging.send(message)
+            success_count += 1
+        except Exception as e:
+            # 특정 토큰 발송 실패 시 로그를 남기고 계속 진행
+            print(f"오류: 토큰 [{token[:20]}...] 발송 실패 - {e}")
+            failure_count += 1
+    
+    print(f"-> 개별 발송 결과: 성공 {success_count}건, 실패 {failure_count}건")
 
 
 def get_latest_post_info():
@@ -135,7 +122,7 @@ def get_latest_post_info():
     return None, None, None
 
 
-# --- 메인 실행 로직 (웹 푸시에 맞게 최종 수정) ---
+# --- ★★★ 메인 실행 로직 (수정됨) ★★★ ---
 if __name__ == "__main__":
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 신규 공지사항 확인을 시작합니다...")
 
@@ -157,19 +144,17 @@ if __name__ == "__main__":
             print(f"  - 번호: {latest_post_num}")
             print(f"  - 제목: {latest_title}")
             
-            # 1. DB에 저장된 모든 웹 브라우저 토큰을 가져옴
             all_tokens = get_all_tokens_from_db()
 
             if all_tokens:
-                # 2. 모든 토큰에 웹 푸시 알림 발송
-                send_fcm_multicast_notification(
+                # 수정된 개별 발송 함수를 호출합니다.
+                send_fcm_to_each_token(
                     title="새 공지사항 알림",
                     body=latest_title,
                     link=latest_link,
                     tokens=all_tokens
                 )
             
-            # 3. 새로 보낸 ID를 DB에 저장 (알림 성공 여부와 관계없이 ID는 저장)
             save_id_to_db(latest_post_num)
         else:
             print("-> 새로운 공지사항이 없습니다. 알림을 발송하지 않습니다.")
