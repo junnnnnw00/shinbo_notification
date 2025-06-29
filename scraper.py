@@ -57,11 +57,10 @@ def get_all_tokens_from_db():
         print(f"오류: DB에서 토큰을 읽지 못했습니다 - {e}")
         return []
 
-# --- ★★★ 알림 발송 함수 (수정됨) ★★★ ---
+# --- 알림 발송 함수 (수정됨) ---
 def send_fcm_to_each_token(title, body, link, tokens):
     """
     (수정된 방식) 여러 토큰에 각각 하나씩 알림을 보냅니다.
-    Multicast(일괄 발송) 대신 Send(개별 발송)를 사용합니다.
     """
     if not tokens:
         return
@@ -70,26 +69,20 @@ def send_fcm_to_each_token(title, body, link, tokens):
     success_count = 0
     failure_count = 0
 
-    # 각 토큰에 대해 루프를 돌면서 개별적으로 메시지 발송
     for token in tokens:
         try:
-            # 개별 발송에는 Message 객체를 사용합니다.
+            # ★★★ 수정: notification 대신 data 페이로드에 모든 정보를 담습니다. ★★★
             message = messaging.Message(
-                webpush=messaging.WebpushConfig(
-                    notification=messaging.WebpushNotification(
-                        title=title,
-                        body=body,
-                    ),
-                    fcm_options=messaging.WebpushFCMOptions(
-                        link=link
-                    ),
-                ),
-                token=token, # 개별 토큰 지정
+                data={
+                    "title": title,
+                    "body": body,
+                    "link": link
+                },
+                token=token,
             )
             messaging.send(message)
             success_count += 1
         except Exception as e:
-            # 특정 토큰 발송 실패 시 로그를 남기고 계속 진행
             print(f"오류: 토큰 [{token[:20]}...] 발송 실패 - {e}")
             failure_count += 1
     
@@ -122,7 +115,7 @@ def get_latest_post_info():
     return None, None, None
 
 
-# --- ★★★ 메인 실행 로직 (수정됨) ★★★ ---
+# --- 메인 실행 로직 (이전과 동일) ---
 if __name__ == "__main__":
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 신규 공지사항 확인을 시작합니다...")
 
@@ -147,7 +140,6 @@ if __name__ == "__main__":
             all_tokens = get_all_tokens_from_db()
 
             if all_tokens:
-                # 수정된 개별 발송 함수를 호출합니다.
                 send_fcm_to_each_token(
                     title="새 공지사항 알림",
                     body=latest_title,
