@@ -6,21 +6,35 @@ import json
 import firebase_admin
 from firebase_admin import credentials, messaging, db
 
-# --- 설정 부분 (이전과 동일) ---
-NOTICE_URL = "https://www.ulsanshinbo.co.kr/04_notice/?mcode=0404010000"
-BASE_URL = "https://www.ulsanshinbo.co.kr"
+# --- ★★★ 설정 부분 (가장 중요) ★★★ ---
+# 나중에 다른 지역을 추가할 때, 이 리스트에 정보만 추가하면 됩니다.
+REGIONS_CONFIG = [
+    {
+        "id": "ulsan",
+        "name_kr": "울산신용보증재단",
+        "url": "https://www.ulsanshinbo.co.kr/02_sinbo/?mcode=0402060000",
+        "base_url": "https://www.ulsanshinbo.co.kr"
+    },
+    # 예시: 나중에 부산을 추가하고 싶다면 아래 주석을 풀고 정보만 채우면 됩니다.
+    # {
+    #     "id": "busan",
+    #     "name_kr": "부산신용보증재단",
+    #     "url": "https://www.busansinbo.or.kr/...",
+    #     "base_url": "https://www.busansinbo.or.kr"
+    # }
+]
+
 DATABASE_URL = 'https://shinbo-notify-default-rtdb.asia-southeast1.firebasedatabase.app/' 
 
 def initialize_fcm():
     """FCM 및 DB 초기화 함수"""
     try:
-        firebase_credentials_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
-        if not firebase_credentials_json:
-            print("오류: FIREBASE_CREDENTIALS_JSON 환경 변수가 설정되지 않았습니다.")
-            return False
-        cred_json = json.loads(firebase_credentials_json)
-        cred = credentials.Certificate(cred_json)
         if not firebase_admin._apps:
+            firebase_credentials_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+            if not firebase_credentials_json:
+                raise ValueError("FIREBASE_CREDENTIALS_JSON 환경 변수가 설정되지 않았습니다.")
+            cred_json = json.loads(firebase_credentials_json)
+            cred = credentials.Certificate(cred_json)
             firebase_admin.initialize_app(cred, {'databaseURL': DATABASE_URL})
         print("-> Firebase Admin SDK 초기화 성공")
         return True
@@ -28,56 +42,69 @@ def initialize_fcm():
         print(f"오류: Firebase Admin SDK 초기화 실패 - {e}")
         return False
 
-# --- DB 연동 함수들 (이전과 동일) ---
-def get_last_sent_id_from_db():
-    try:
-        ref = db.reference('state/last_post_id')
-        return ref.get()
-    except Exception as e:
-        print(f"오류: DB에서 마지막 ID를 읽지 못했습니다 - {e}")
-        return None
+# --- 데이터베이스 및 스크래핑 로직 (유지보수 강화) ---
 
-def save_id_to_db(post_id):
+def scrape_announcements_for_region(region):
+    """설정된 지역의 '시행중' 공고를 스크래핑하는 범용 함수"""
     try:
-        ref = db.reference('state')
-        ref.set({'last_post_id': post_id})
-        print(f"-> DB에 새로운 ID 저장 성공: {post_id}")
-    except Exception as e:
-        print(f"오류: DB에 ID를 저장하지 못했습니다 - {e}")
-
-def get_all_tokens_from_db():
-    try:
-        ref = db.reference('tokens') 
-        tokens_dict = ref.get()
-        if not tokens_dict:
-            print("-> DB에 저장된 웹 푸시 토큰이 없습니다.")
-            return []
-        return list(tokens_dict.keys())
-    except Exception as e:
-        print(f"오류: DB에서 토큰을 읽지 못했습니다 - {e}")
+        response = requests.get(region["url"], timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"오류: {region['name_kr']} 사이트에 접속할 수 없습니다. ({e})")
         return []
 
-# --- 알림 발송 함수 (수정됨) ---
-def send_fcm_to_each_token(title, body, link, tokens):
-    """
-    (수정된 방식) 여러 토큰에 각각 하나씩 알림을 보냅니다.
-    """
+    soup = BeautifulSoup(response.text, "html.parser")
+    # 울산신보 '중소기업지원자금공고' 페이지의 테이블 구조에 맞춤
+    rows = soup.select("div.board-text table tbody tr")
+    
+    active_announcements = []
+    for row in rows:
+        # 5번째 칸(td)에서 상태(status) 텍스트를 가져옴
+        status_td = row.select_one("td:nth-of-type(5)")
+        # '시행중' 이라는 텍스트가 포함된 경우에만 데이터를 수집
+        if not status_td or "시행중" not in status_td.text:
+            continue
+        
+        post_id_td = row.select_one("td.num")
+        title_link_td = row.select_one("td.link a")
+
+        if post_id_td and title_link_td:
+            active_announcements.append({
+                "id": post_id_td.text.strip(),
+                "title": title_link_td.text.strip(),
+                "link": region["base_url"] + title_link_td['href'],
+                "status": status_td.text.strip()
+            })
+            
+    return active_announcements
+
+def get_data_from_db(path):
+    """DB의 특정 경로에서 데이터를 가져오는 범용 함수"""
+    try:
+        return db.reference(path).get()
+    except Exception as e:
+        print(f"오류: DB 경로 '{path}'에서 데이터를 읽지 못했습니다 - {e}")
+        return None
+
+def set_data_to_db(path, data):
+    """DB의 특정 경로에 데이터를 저장하는 범용 함수"""
+    try:
+        db.reference(path).set(data)
+        print(f"-> DB 경로 '{path}'에 새로운 데이터 저장 성공")
+    except Exception as e:
+        print(f"오류: DB 경로 '{path}'에 데이터를 저장하지 못했습니다 - {e}")
+
+def send_fcm_notification(title, body, link, tokens):
+    """개별 토큰에 알림을 보내는 함수"""
     if not tokens:
         return
-
-    print(f"-> 총 {len(tokens)}개의 토큰에 개별 발송을 시도합니다...")
+    
     success_count = 0
     failure_count = 0
-
     for token in tokens:
         try:
-            # ★★★ 수정: notification 대신 data 페이로드에 모든 정보를 담습니다. ★★★
             message = messaging.Message(
-                data={
-                    "title": title,
-                    "body": body,
-                    "link": link
-                },
+                data={"title": title, "body": body, "link": link},
                 token=token,
             )
             messaging.send(message)
@@ -85,70 +112,55 @@ def send_fcm_to_each_token(title, body, link, tokens):
         except Exception as e:
             print(f"오류: 토큰 [{token[:20]}...] 발송 실패 - {e}")
             failure_count += 1
-    
-    print(f"-> 개별 발송 결과: 성공 {success_count}건, 실패 {failure_count}건")
+    print(f"-> 알림 발송 결과: 성공 {success_count}건, 실패 {failure_count}건")
 
 
-def get_latest_post_info():
-    """웹사이트에서 최신 공지사항 정보를 가져오는 함수 (이전과 동일)"""
-    try:
-        response = requests.get(NOTICE_URL, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print(f"오류: 웹사이트에 접속할 수 없습니다. ({e}")
-        return None, None, None
-    soup = BeautifulSoup(response.text, "html.parser")
-    rows = soup.select("div.board-text table tbody tr")
-    for row in rows:
-        if 'ntc' in row.get('class', []):
-            continue
-        post_number_td = row.select_one("td.num")
-        if not post_number_td:
-            continue
-        post_number = post_number_td.text.strip()
-        subject_td_link = row.select_one("td.link a")
-        if subject_td_link:
-            title = subject_td_link.text.strip()
-            relative_link = subject_td_link['href']
-            full_link = BASE_URL + relative_link
-            return post_number, title, full_link
-    return None, None, None
-
-
-# --- 메인 실행 로직 (이전과 동일) ---
+# --- 메인 실행 로직 (유지보수 강화) ---
 if __name__ == "__main__":
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 신규 공지사항 확인을 시작합니다...")
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 전체 지역 지원사업 공고 확인을 시작합니다...")
 
     if not initialize_fcm():
         exit()
 
-    latest_post_num, latest_title, latest_link = get_latest_post_info()
+    all_tokens = get_data_from_db('tokens')
+    tokens_list = list(all_tokens.keys()) if all_tokens else []
 
-    if not latest_post_num:
-        print("-> 최신 게시물 정보를 가져오는 데 실패했습니다.")
-    else:
-        last_sent_id = get_last_sent_id_from_db()
+    # 설정된 모든 지역에 대해 순차적으로 작업 수행
+    for region in REGIONS_CONFIG:
+        region_id = region["id"]
+        region_name_kr = region["name_kr"]
+        db_path = f'announcements/{region_id}'
         
-        print(f"-> 웹사이트 최신 ID: {latest_post_num}")
-        print(f"-> DB에 저장된 마지막 ID: {last_sent_id or '없음'}")
+        print(f"\n--- {region_name_kr} 작업 시작 ---")
 
-        if str(latest_post_num) != str(last_sent_id):
-            print("\n★★★ 새로운 공지사항 발견! 웹 푸시 알림을 발송합니다. ★★★")
-            print(f"  - 번호: {latest_post_num}")
-            print(f"  - 제목: {latest_title}")
-            
-            all_tokens = get_all_tokens_from_db()
+        # 1. 해당 지역의 '시행중' 공고 스크래핑
+        scraped_data = scrape_announcements_for_region(region)
+        print(f"-> 스크래핑 완료: 총 {len(scraped_data)}개의 '시행중' 공고 발견")
 
-            if all_tokens:
-                send_fcm_to_each_token(
-                    title="새 공지사항 알림",
-                    body=latest_title,
-                    link=latest_link,
-                    tokens=all_tokens
-                )
-            
-            save_id_to_db(latest_post_num)
+        # 2. DB에서 이전 데이터 가져오기
+        db_data = get_data_from_db(db_path) or []
+        
+        scraped_ids = {item['id'] for item in scraped_data}
+        db_ids = {item['id'] for item in db_data}
+
+        # 3. 새로운 공고 확인 및 알림 발송
+        new_item_ids = scraped_ids - db_ids
+        if new_item_ids:
+            print(f"-> ★★★ {len(new_item_ids)}개의 새로운 공고 발견! 알림 발송 ★★★")
+            if tokens_list:
+                for new_id in new_item_ids:
+                    new_item = next((item for item in scraped_data if item["id"] == new_id), None)
+                    if new_item:
+                        notification_title = f"[{region_name_kr}] 신규 지원사업"
+                        notification_body = new_item['title']
+                        print(f"  - 알림 발송: {notification_body}")
+                        send_fcm_notification(notification_title, notification_body, new_item['link'], tokens_list)
+            else:
+                print("-> 알림을 보낼 사용자가 없습니다.")
         else:
-            print("-> 새로운 공지사항이 없습니다. 알림을 발송하지 않습니다.")
-    
-    print("\n작업을 종료합니다.")
+            print("-> 새로운 공고가 없습니다.")
+
+        # 4. 최신 정보로 DB 업데이트
+        set_data_to_db(db_path, scraped_data)
+
+    print("\n--- 모든 작업 종료 ---")
