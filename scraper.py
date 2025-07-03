@@ -5,6 +5,7 @@ import time
 import json
 import firebase_admin
 from firebase_admin import credentials, messaging, db
+from urllib.parse import urljoin # 링크 생성을 위해 import
 
 # --- 설정 부분 (유지보수 강화 버전) ---
 REGIONS_CONFIG = [
@@ -34,18 +35,17 @@ def initialize_fcm():
         print(f"오류: Firebase Admin SDK 초기화 실패 - {e}")
         return False
 
-# --- ★★★ 스크래핑 로직 (V4 수정) ★★★ ---
+# --- ★★★ 스크래핑 로직 (V4 최종 수정) ★★★ ---
 def scrape_announcements_for_region(region):
     """설정된 지역의 '시행중' 공고를 스크래핑하는 범용 함수"""
     try:
-        response = requests.get(region["url"], timeout=10)
+        response = requests.get(region["url"], timeout=15)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"오류: {region['name_kr']} 사이트에 접속할 수 없습니다. ({e})")
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
-    # 새로운 페이지의 테이블 구조에 맞게 선택자 수정
     rows = soup.select("div.board-text table tbody tr")
     
     active_announcements = []
@@ -53,7 +53,7 @@ def scrape_announcements_for_region(region):
         # '시행여부'는 6번째 칸(td)에 위치함
         status_cell = row.select_one("td:nth-of-type(6)")
         
-        # '시행중' 이라는 텍스트를 가진 span.ing 태그가 있는지 확인
+        # '시행중' 상태를 나타내는 'state ing' 클래스를 가진 span 태그가 있는지 확인
         if status_cell and status_cell.select_one("span.state.ing"):
             status = status_cell.text.strip()
             
@@ -62,11 +62,14 @@ def scrape_announcements_for_region(region):
             title_cell = row.select_one("td:nth-of-type(3) a")
 
             if id_cell and title_cell:
+                # urljoin을 사용하여 상대 경로의 링크를 완전한 URL로 안전하게 변환
+                link_href = title_cell['href']
+                full_link = urljoin(region['url'], link_href)
+
                 active_announcements.append({
                     "id": id_cell.text.strip(),
                     "title": title_cell.text.strip(),
-                    # href 속성이 '?mcode=...' 로 시작하므로, region['url']을 기반으로 링크 생성
-                    "link": region["url"] + '&' + title_cell['href'].lstrip('?'),
+                    "link": full_link,
                     "status": status
                 })
             
@@ -129,5 +132,8 @@ if __name__ == "__main__":
                 print("-> 알림을 보낼 사용자가 없습니다.")
         else:
             print("-> 새로운 공고가 없습니다.")
+        
+        # 스크래핑 결과가 비어있더라도, 이전 데이터를 지우기 위해 항상 DB에 저장
         set_data_to_db(db_path, scraped_data)
+
     print("\n--- 모든 작업 종료 ---")
