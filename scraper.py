@@ -5,22 +5,142 @@ import time
 import json
 import firebase_admin
 from firebase_admin import credentials, messaging, db
-from urllib.parse import urljoin # 링크 생성을 위해 import
+from urllib.parse import urljoin
 
-# --- 설정 부분 (유지보수 강화 버전) ---
+# --- 설정 부분 ---
 REGIONS_CONFIG = [
+    # {
+    #     "id": "ulsan",
+    #     "name_kr": "울산신용보증재단",
+    #     "type": "html",
+    #     "url": "https://www.ulsanshinbo.co.kr/02_sinbo/?mcode=0402060000",
+    #     "base_url": "https://www.ulsanshinbo.co.kr"
+    # },
     {
-        "id": "ulsan",
-        "name_kr": "울산신용보증재단",
-        "url": "https://www.ulsanshinbo.co.kr/02_sinbo/?mcode=0402060000",
-        "base_url": "https://www.ulsanshinbo.co.kr"
+        "id": "koreg_kws",
+        "name_kr": "보증드림-강원신용보증재단",
+        "type": "koreg",
+        "cgfcd": "KWS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_gns",
+        "name_kr": "보증드림-경남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "GNS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_wuf",
+        "name_kr": "보증드림-경북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "WUF",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttu",
+        "name_kr": "보증드림-광주신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTU",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttg",
+        "name_kr": "보증드림-대구신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttv",
+        "name_kr": "보증드림-대전신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTV",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_bss",
+        "name_kr": "보증드림-부산신용보증재단",
+        "type": "koreg",
+        "cgfcd": "BSS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_sjs",
+        "name_kr": "보증드림-세종신용보증재단",
+        "type": "koreg",
+        "cgfcd": "SJS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_uss",
+        "name_kr": "보증드림-울산신용보증재단",
+        "type": "koreg",
+        "cgfcd": "USS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttt",
+        "name_kr": "보증드림-인천신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTT",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_wug",
+        "name_kr": "보증드림-전남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "WUG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_jbs",
+        "name_kr": "보증드림-전북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "JBS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_jcs",
+        "name_kr": "보증드림-제주신용보증재단",
+        "type": "koreg",
+        "cgfcd": "JCS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_cns",
+        "name_kr": "보증드림-충남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "CNS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_cbs",
+        "name_kr": "보증드림-충북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "CBS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
     },
 ]
 
-DATABASE_URL = 'https://shinbo-notify-default-rtdb.asia-southeast1.firebasedatabase.app/' 
+DATABASE_URL = 'https://shinbo-notify-default-rtdb.asia-southeast1.firebasedatabase.app/'
 
 def initialize_fcm():
-    """FCM 및 DB 초기화 함수"""
     try:
         if not firebase_admin._apps:
             firebase_credentials_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
@@ -35,9 +155,8 @@ def initialize_fcm():
         print(f"오류: Firebase Admin SDK 초기화 실패 - {e}")
         return False
 
-# --- ★★★ 스크래핑 로직 (V4 최종 수정) ★★★ ---
-def scrape_announcements_for_region(region):
-    """설정된 지역의 '시행중' 공고를 스크래핑하는 범용 함수"""
+# --- HTML 기반 크롤링 ---
+def scrape_html_announcements(region):
     try:
         response = requests.get(region["url"], timeout=15)
         response.raise_for_status()
@@ -47,22 +166,16 @@ def scrape_announcements_for_region(region):
 
     soup = BeautifulSoup(response.text, "html.parser")
     rows = soup.select("div.board-text table tbody tr")
-    
+
     active_announcements = []
     for row in rows:
-        # '시행여부'는 6번째 칸(td)에 위치함
         status_cell = row.select_one("td:nth-of-type(6)")
-        
-        # '시행중' 상태를 나타내는 'state ing' 클래스를 가진 span 태그가 있는지 확인
         if status_cell and status_cell.select_one("span.state.ing"):
             status = status_cell.text.strip()
-            
-            # '번호'는 1번째 칸, '자금공고명'은 3번째 칸에 위치함
             id_cell = row.select_one("td:nth-of-type(1)")
             title_cell = row.select_one("td:nth-of-type(3) a")
 
             if id_cell and title_cell:
-                # urljoin을 사용하여 상대 경로의 링크를 완전한 URL로 안전하게 변환
                 link_href = title_cell['href']
                 full_link = urljoin(region['url'], link_href)
 
@@ -72,23 +185,71 @@ def scrape_announcements_for_region(region):
                     "link": full_link,
                     "status": status
                 })
-            
+
     return active_announcements
 
-# --- DB 및 알림 함수 (이전과 동일) ---
+# --- 코렉(KOREG) Ajax 크롤링 ---
+def scrape_koreg_announcements(region):
+    s = requests.Session()
+    try:
+        s.get(f"{region['set_region_url']}?cgfcd={region['cgfcd']}", allow_redirects=False)
+    except Exception as e:
+        print(f"오류: {region['name_kr']} 지역 설정 실패 - {e}")
+        return []
+
+    headers = {
+        "X-Requested-With": "XMLHttpRequest",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    data = {
+        "goodScptCd": "",
+        "goods_chrt_cd_list": "",
+        "untct_fbank_list": "",
+        "grt_sprt_lmt_amt": "",
+        "startDate": "",
+        "endDate": "",
+        "keyWord": "",
+    }
+
+    try:
+        res = s.post(region['ajax_url'], headers=headers, data=data, timeout=15)
+        res.raise_for_status()
+        json_data = res.json()
+    except Exception as e:
+        print(f"오류: {region['name_kr']} Ajax 요청 실패 - {e}")
+        return []
+
+    announcements = []
+    for item in json_data.get("resultList", []):
+        if item.get("goodsSttsNm") == "시행중":
+            announcements.append({
+                "id": item.get("goodsSn", ""),
+                "title": item.get("goodsNm", "").strip(),
+                "link": f"https://untact.koreg.or.kr/grtApp/selectGrtGoodsDetail.do?goodsSn={item.get('goodsSn')}",
+                "status": item.get("goodsSttsNm", "")
+            })
+
+    return announcements
+
+# --- DB 및 알림 ---
 def get_data_from_db(path):
     try:
         return db.reference(path).get()
-    except Exception as e: return None
+    except Exception:
+        return None
 
 def set_data_to_db(path, data):
     try:
         db.reference(path).set(data)
         print(f"-> DB 경로 '{path}'에 새로운 데이터 저장 성공")
-    except Exception as e: print(f"오류: DB 경로 '{path}'에 데이터를 저장하지 못했습니다 - {e}")
+    except Exception as e:
+        print(f"오류: DB 경로 '{path}'에 데이터를 저장하지 못했습니다 - {e}")
 
 def send_fcm_notification(title, body, link, tokens):
-    if not tokens: return
+    if not tokens:
+        return
     success_count, failure_count = 0, 0
     for token in tokens:
         try:
@@ -100,10 +261,11 @@ def send_fcm_notification(title, body, link, tokens):
             failure_count += 1
     print(f"-> 알림 발송 결과: 성공 {success_count}건, 실패 {failure_count}건")
 
-# --- 메인 로직 (이전과 동일) ---
+# --- 메인 로직 ---
 if __name__ == "__main__":
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 전체 지역 지원사업 공고 확인을 시작합니다...")
-    if not initialize_fcm(): exit()
+    if not initialize_fcm():
+        exit()
 
     all_tokens = get_data_from_db('tokens')
     tokens_list = list(all_tokens.keys()) if all_tokens else []
@@ -113,7 +275,14 @@ if __name__ == "__main__":
         db_path = f'announcements/{region_id}'
         print(f"\n--- {region_name_kr} 작업 시작 ---")
 
-        scraped_data = scrape_announcements_for_region(region)
+        if region["type"] == "html":
+            scraped_data = scrape_html_announcements(region)
+        elif region["type"] == "koreg":
+            scraped_data = scrape_koreg_announcements(region)
+        else:
+            print(f"오류: 알 수 없는 타입 '{region['type']}'")
+            continue
+
         print(f"-> 스크래핑 완료: 총 {len(scraped_data)}개의 '시행중' 공고 발견")
 
         db_data = get_data_from_db(db_path) or []
@@ -132,8 +301,7 @@ if __name__ == "__main__":
                 print("-> 알림을 보낼 사용자가 없습니다.")
         else:
             print("-> 새로운 공고가 없습니다.")
-        
-        # 스크래핑 결과가 비어있더라도, 이전 데이터를 지우기 위해 항상 DB에 저장
+
         set_data_to_db(db_path, scraped_data)
 
     print("\n--- 모든 작업 종료 ---")
