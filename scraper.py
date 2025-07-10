@@ -192,7 +192,7 @@ def scrape_html_announcements(region):
 def scrape_koreg_announcements(region):
     s = requests.Session()
     try:
-        s.get(f"{region['set_region_url']}?cgfcd={region['cgfcd']}", allow_redirects=False)
+        s.get(f"{region['set_region_url']}?cgfcd={region['cgfcd']}", allow_redirects=True)
     except Exception as e:
         print(f"오류: {region['name_kr']} 지역 설정 실패 - {e}")
         return []
@@ -216,6 +216,10 @@ def scrape_koreg_announcements(region):
     try:
         res = s.post(region['ajax_url'], headers=headers, data=data, timeout=15)
         res.raise_for_status()
+        # JSON이 아닐 경우 예외 발생하도록 처리
+        if "application/json" not in res.headers.get("Content-Type", ""):
+            raise ValueError("응답이 JSON이 아닙니다.")
+
         json_data = res.json()
     except Exception as e:
         print(f"오류: {region['name_kr']} Ajax 요청 실패 - {e}")
