@@ -7,6 +7,9 @@ import firebase_admin
 from firebase_admin import credentials, messaging, db
 from urllib.parse import urljoin
 
+def log(msg: str) -> None:
+    print(msg, flush=True)
+
 # --- 설정 부분 ---
 REGIONS_CONFIG = [
     # {
