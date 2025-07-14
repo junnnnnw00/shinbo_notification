@@ -1,5 +1,5 @@
 import requests
-from bs4 import BeautifulSoup # ★★★ 이 줄이 빠져있었습니다! ★★★
+from bs4 import BeautifulSoup
 import os
 import time
 import json
@@ -166,7 +166,7 @@ def scrape_koreg_announcements(region):
     s.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
     })
-    main_page_url = "https://untact.koreg.or.kr/web/index.do"
+    main_page_url = "https://untact.koreg.or.kr/web/lay1/program/S1T1C5/grtApp/selectGrtGoodsList.do"
     csrf_token = None
     csrf_header_name = "X-CSRF-TOKEN" # 대부분의 경우 이 헤더 이름을 사용
 
