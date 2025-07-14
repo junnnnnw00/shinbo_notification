@@ -164,24 +164,31 @@ def initialize_fcm():
 # --- 코렉(KOREG) Ajax 크롤링 (최종 수정) ---
 def scrape_koreg_announcements(region):
     s = requests.Session()
+    # 모든 요청에 브라우저처럼 보이도록 User-Agent 설정
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+    })
+    
+    main_page_url = "https://untact.koreg.or.kr/grtApp/selectGrtGoodsList.do"
+
     try:
+        # 1. 메인 페이지를 먼저 방문하여 세션 쿠키를 획득합니다.
+        log(f"KOREG 메인 페이지 방문 시도: {region['name_kr']}")
+        s.get(main_page_url, timeout=20)
+        log("-> KOREG 메인 페이지 방문 완료")
+
+        # 2. 지역 설정을 합니다.
         log(f"KOREG 지역 설정 시도: {region['name_kr']}")
         s.get(f"{region['set_region_url']}?cgfcd={region['cgfcd']}", allow_redirects=True, timeout=20)
         log("-> KOREG 지역 설정 완료")
-    except Exception as e:
-        log(f"오류: {region['name_kr']} 지역 설정 실패 - {e}")
-        return []
 
-    headers = {
-        "X-Requested-With": "XMLHttpRequest",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-        # ★★★ 서버가 정상적인 요청으로 인식하도록 Referer 헤더 추가 ★★★
-        "Referer": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsList.do"
-    }
-    data = {"goodScptCd": "", "goods_chrt_cd_list": "", "untct_fbank_list": "", "grt_sprt_lmt_amt": "", "startDate": "", "endDate": "", "keyWord": ""}
+        # 3. Ajax 요청을 보냅니다.
+        headers = {
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": main_page_url # 이 페이지에서 요청이 온 것처럼 위장
+        }
+        data = {"goodScptCd": "", "goods_chrt_cd_list": "", "untct_fbank_list": "", "grt_sprt_lmt_amt": "", "startDate": "", "endDate": "", "keyWord": ""}
 
-    try:
         log(f"KOREG 데이터 Ajax 요청 시도: {region['name_kr']}")
         res = s.post(region['ajax_url'], headers=headers, data=data, timeout=20)
         res.raise_for_status()
@@ -189,19 +196,19 @@ def scrape_koreg_announcements(region):
         
         json_data = res.json()
     except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
-        log(f"오류: {region['name_kr']} Ajax 요청 또는 JSON 파싱 실패 - {e}")
-        log(f"-> 수신된 내용(일부): {res.text[:200]}")
+        log(f"오류: {region['name_kr']} 스크래핑 과정 실패 - {e}")
+        if 'res' in locals():
+            log(f"-> 수신된 내용(일부): {res.text[:200]}")
         return []
 
     announcements = []
-    # ★★★ 수정: "list" 키에서 데이터를 가져오고, "시행중" 필터링 제거 ★★★
+    # ★★★ 수정: "list" 키에서 데이터를 가져오고, 모든 공고를 처리합니다. ★★★
     for item in json_data.get("list", []):
-        # 모든 공고를 가져오므로 상태(status)는 '공고중'으로 통일
         announcements.append({
             "id": str(item.get("grt_goods_no", "")),
             "title": item.get("goods_nm", "").strip(),
             "link": f"https://untact.koreg.or.kr/grtApp/selectGrtGoodsDetail.do?goodsSn={item.get('grt_goods_no')}",
-            "status": "공고중"
+            "status": "공고중" # 모든 공고를 '공고중'으로 표시
         })
     return announcements
 
