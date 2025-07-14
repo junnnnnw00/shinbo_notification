@@ -213,6 +213,7 @@ def scrape_koreg_announcements(region):
         log(f"오류: {region['name_kr']} 스크래핑 과정 실패 - {e}")
         return []
 
+    log(json_data)  # 디버깅용 로그 출력
     announcements = []
     for item in json_data.get("list", []):
         announcements.append({
