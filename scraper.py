@@ -7,7 +7,7 @@ import firebase_admin
 from firebase_admin import credentials, messaging, db
 from urllib.parse import urljoin
 
-# --- ★★★ 디버깅을 위한 강제 출력 로그 함수 ★★★ ---
+# --- 디버깅을 위한 강제 출력 로그 함수 ---
 def log(msg: str) -> None:
     """실행 즉시 로그를 출력하는 함수"""
     print(msg, flush=True)
@@ -29,7 +29,110 @@ REGIONS_CONFIG = [
         "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
         "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
     },
-    # ... (다른 koreg 지역 설정은 그대로 유지) ...
+    {
+        "id": "koreg_gns",
+        "name_kr": "보증드림-경남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "GNS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_wuf",
+        "name_kr": "보증드림-경북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "WUF",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttu",
+        "name_kr": "보증드림-광주신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTU",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttg",
+        "name_kr": "보증드림-대구신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttv",
+        "name_kr": "보증드림-대전신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTV",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_bss",
+        "name_kr": "보증드림-부산신용보증재단",
+        "type": "koreg",
+        "cgfcd": "BSS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_sjs",
+        "name_kr": "보증드림-세종신용보증재단",
+        "type": "koreg",
+        "cgfcd": "SJS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_uss",
+        "name_kr": "보증드림-울산신용보증재단",
+        "type": "koreg",
+        "cgfcd": "USS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttt",
+        "name_kr": "보증드림-인천신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTT",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_wug",
+        "name_kr": "보증드림-전남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "WUG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_jbs",
+        "name_kr": "보증드림-전북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "JBS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_jcs",
+        "name_kr": "보증드림-제주신용보증재단",
+        "type": "koreg",
+        "cgfcd": "JCS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_cns",
+        "name_kr": "보증드림-충남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "CNS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
     {
         "id": "koreg_cbs",
         "name_kr": "보증드림-충북신용보증재단",
@@ -58,13 +161,7 @@ def initialize_fcm():
         log(f"오류: Firebase Admin SDK 초기화 실패 - {e}")
         return False
 
-# --- HTML 기반 크롤링 ---
-def scrape_html_announcements(region):
-    log(f"HTML 스크래핑 시작: {region['name_kr']}")
-    # ... (이전 코드와 동일)
-    return [] # 현재는 사용하지 않으므로 빈 리스트 반환
-
-# --- 코렉(KOREG) Ajax 크롤링 ---
+# --- 코렉(KOREG) Ajax 크롤링 (최종 수정) ---
 def scrape_koreg_announcements(region):
     s = requests.Session()
     try:
@@ -78,7 +175,9 @@ def scrape_koreg_announcements(region):
     headers = {
         "X-Requested-With": "XMLHttpRequest",
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+        # ★★★ 서버가 정상적인 요청으로 인식하도록 Referer 헤더 추가 ★★★
+        "Referer": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsList.do"
     }
     data = {"goodScptCd": "", "goods_chrt_cd_list": "", "untct_fbank_list": "", "grt_sprt_lmt_amt": "", "startDate": "", "endDate": "", "keyWord": ""}
 
@@ -88,29 +187,31 @@ def scrape_koreg_announcements(region):
         res.raise_for_status()
         log("-> KOREG 데이터 Ajax 요청 성공")
         
-        if "application/json" not in res.headers.get("Content-Type", ""):
-            raise ValueError(f"응답이 JSON이 아닙니다. 응답 내용: {res.text[:200]}")
-        
         json_data = res.json()
-    except Exception as e:
-        log(f"오류: {region['name_kr']} Ajax 요청 실패 - {e}")
+    except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+        log(f"오류: {region['name_kr']} Ajax 요청 또는 JSON 파싱 실패 - {e}")
+        log(f"-> 수신된 내용(일부): {res.text[:200]}")
         return []
 
     announcements = []
-    for item in json_data.get("resultList", []):
-        if item.get("goodsSttsNm") == "시행중":
-            announcements.append({
-                "id": str(item.get("goodsSn", "")),
-                "title": item.get("goodsNm", "").strip(),
-                "link": f"https://untact.koreg.or.kr/grtApp/selectGrtGoodsDetail.do?goodsSn={item.get('goodsSn')}",
-                "status": item.get("goodsSttsNm", "")
-            })
+    # ★★★ 수정: "list" 키에서 데이터를 가져오고, "시행중" 필터링 제거 ★★★
+    for item in json_data.get("list", []):
+        # 모든 공고를 가져오므로 상태(status)는 '공고중'으로 통일
+        announcements.append({
+            "id": str(item.get("grt_goods_no", "")),
+            "title": item.get("goods_nm", "").strip(),
+            "link": f"https://untact.koreg.or.kr/grtApp/selectGrtGoodsDetail.do?goodsSn={item.get('grt_goods_no')}",
+            "status": "공고중"
+        })
     return announcements
 
-# --- DB 및 알림 ---
+# --- 사용하지 않는 함수 ---
+def scrape_html_announcements(region):
+    return []
+
+# --- DB 및 알림 (이전과 동일) ---
 def get_data_from_db(path):
-    try:
-        return db.reference(path).get()
+    try: return db.reference(path).get()
     except Exception: return None
 
 def set_data_to_db(path, data):
@@ -121,10 +222,19 @@ def set_data_to_db(path, data):
         log(f"오류: DB 경로 '{path}'에 데이터를 저장하지 못했습니다 - {e}")
 
 def send_fcm_notification(title, body, link, tokens):
-    # ... (이전 코드와 동일)
-    pass
+    if not tokens: return
+    success_count, failure_count = 0, 0
+    for token in tokens:
+        try:
+            message = messaging.Message(data={"title": title, "body": body, "link": link}, token=token)
+            messaging.send(message)
+            success_count += 1
+        except Exception as e:
+            log(f"오류: 토큰 [{token[:20]}...] 발송 실패 - {e}")
+            failure_count += 1
+    log(f"-> 알림 발송 결과: 성공 {success_count}건, 실패 {failure_count}건")
 
-# --- 메인 로직 ---
+# --- 메인 로직 (이전과 동일) ---
 def main():
     log(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 전체 지역 지원사업 공고 확인을 시작합니다...")
     if not initialize_fcm():
@@ -150,7 +260,7 @@ def main():
             log(f"오류: 알 수 없는 타입 '{region['type']}'")
             continue
 
-        log(f"-> 스크래핑 완료: 총 {len(scraped_data)}개의 '시행중' 공고 발견")
+        log(f"-> 스크래핑 완료: 총 {len(scraped_data)}개의 공고 발견")
 
         db_data = get_data_from_db(db_path) or []
         scraped_ids = {item['id'] for item in scraped_data}
@@ -159,7 +269,13 @@ def main():
 
         if new_item_ids:
             log(f"-> ★★★ {len(new_item_ids)}개의 새로운 공고 발견! 알림 발송 ★★★")
-            # ... (알림 발송 로직은 생략 가능, 스크래핑 확인이 우선)
+            if tokens_list:
+                for new_id in new_item_ids:
+                    new_item = next((item for item in scraped_data if item["id"] == new_id), None)
+                    if new_item:
+                        send_fcm_notification(f"[{region_name_kr}] 신규 공고", new_item['title'], new_item['link'], tokens_list)
+            else:
+                log("-> 알림을 보낼 사용자가 없습니다.")
         else:
             log("-> 새로운 공고가 없습니다.")
 
@@ -171,5 +287,4 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        # 최후의 보루: 스크립트 전체에서 예상치 못한 오류 발생 시 로그 남기기
         log(f"!!!!!!!! 스크립트 최상위에서 심각한 오류 발생: {e} !!!!!!!!")
