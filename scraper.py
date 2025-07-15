@@ -120,7 +120,7 @@ REGIONS_CONFIG = [
         "id": "koreg_jcs",
         "name_kr": "보증드림-제주신용보증재단",
         "type": "koreg",
-        "cgfcd": "JCS",
+        "cgfcd": "JCG",
         "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
         "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
     },
@@ -219,7 +219,7 @@ def scrape_koreg_announcements(region):
         announcements.append({
             "id": str(item.get("grt_goods_no", "")),
             "title": item.get("goods_nm", "").strip(),
-            "link": f"https://untact.koreg.or.kr/grtApp/selectGrtGoodsDetail.do?goodsSn={item.get('grt_goods_no')}",
+            "link": f"https://untact.koreg.or.kr/web/lay1/program/S1T5C341/grtApp/selectGrtGoodsDtlView.do?grt_goods_no={item.get('grt_goods_no')}",
             "status": "공고중"
         })
     return announcements
