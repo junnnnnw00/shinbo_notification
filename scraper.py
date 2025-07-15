@@ -117,7 +117,7 @@ REGIONS_CONFIG = [
         "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
     },
     {
-        "id": "koreg_jcs",
+        "id": "koreg_jcg",
         "name_kr": "보증드림-제주신용보증재단",
         "type": "koreg",
         "cgfcd": "JCG",
