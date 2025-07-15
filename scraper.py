@@ -267,7 +267,7 @@ def main():
 
     for region in REGIONS_CONFIG:
         region_id, region_name_kr = region["id"], region["name_kr"]
-        db_path = f'announcements/{region_id}'
+        db_path = f'announcements/{region_name_kr}'
         log(f"\n--- {region_name_kr} 작업 시작 ---")
 
         scraped_data = []
