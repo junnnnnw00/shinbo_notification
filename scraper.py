@@ -204,7 +204,7 @@ def scrape_koreg_announcements(region):
         }
 
         log(f"KOREG 데이터 Ajax 요청 시도: {region['name_kr']}")
-        res = s.post(region['ajax_url'], headers=headers, data=data, timeout=30)
+        res = s.get(region['ajax_url'], headers=headers, data=data, timeout=30)
         res.raise_for_status()
         log("-> KOREG 데이터 Ajax 요청 성공")
         
