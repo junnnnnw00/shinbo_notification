@@ -16,6 +16,13 @@ RETRY_DELAY = 3   # 재시도 간격(sec)
 
 # ==================== 설정 ==================== #
 REGIONS_CONFIG = [
+    # {
+    #     "id": "ulsan",
+    #     "name_kr": "울산신용보증재단",
+    #     "type": "html",
+    #     "url": "https://www.ulsanshinbo.co.kr/02_sinbo/?mcode=0402060000",
+    #     "base_url": "https://www.ulsanshinbo.co.kr"
+    # },
     {
         "id": "koreg_kws",
         "name_kr": "보증드림-강원신용보증재단",
@@ -24,7 +31,118 @@ REGIONS_CONFIG = [
         "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
         "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
     },
-    # ... 나머지 지역 그대로 ...
+    {
+        "id": "koreg_gns",
+        "name_kr": "보증드림-경남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "GNS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_wuf",
+        "name_kr": "보증드림-경북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "WUF",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttu",
+        "name_kr": "보증드림-광주신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTU",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttg",
+        "name_kr": "보증드림-대구신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttv",
+        "name_kr": "보증드림-대전신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTV",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_bss",
+        "name_kr": "보증드림-부산신용보증재단",
+        "type": "koreg",
+        "cgfcd": "BSS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_sjs",
+        "name_kr": "보증드림-세종신용보증재단",
+        "type": "koreg",
+        "cgfcd": "SJS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_uss",
+        "name_kr": "보증드림-울산신용보증재단",
+        "type": "koreg",
+        "cgfcd": "USS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_ttt",
+        "name_kr": "보증드림-인천신용보증재단",
+        "type": "koreg",
+        "cgfcd": "TTT",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_wug",
+        "name_kr": "보증드림-전남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "WUG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_jbs",
+        "name_kr": "보증드림-전북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "JBS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_jcg",
+        "name_kr": "보증드림-제주신용보증재단",
+        "type": "koreg",
+        "cgfcd": "JCG",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_cns",
+        "name_kr": "보증드림-충남신용보증재단",
+        "type": "koreg",
+        "cgfcd": "CNS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
+    {
+        "id": "koreg_cbs",
+        "name_kr": "보증드림-충북신용보증재단",
+        "type": "koreg",
+        "cgfcd": "CBS",
+        "ajax_url": "https://untact.koreg.or.kr/grtApp/selectGrtGoodsListAjax.do",
+        "set_region_url": "https://untact.koreg.or.kr/web/inc/change_cfgcd.do"
+    },
 ]
 
 DATABASE_URL = 'https://shinbo-notify-default-rtdb.asia-southeast1.firebasedatabase.app/'
@@ -77,7 +195,7 @@ def scrape_koreg_announcements(region):
                 "grt_sprt_lmt_amt": "", "startDate": "", "endDate": "", "keyWord": "",
                 "_csrf": csrf_token
             }
-            res = s.post(region['ajax_url'], headers=headers, data=data, timeout=30)
+            res = s.get(region['ajax_url'], headers=headers, data=data, timeout=30)
             res.raise_for_status()
             json_data = res.json()
 
