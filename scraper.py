@@ -233,7 +233,8 @@ def scrape_koreg_announcements(region):
             "id": gid,
             "title": item.get("goods_nm", "").strip(),
             "link": f"https://untact.koreg.or.kr/web/lay1/program/S1T5C341/grtApp/selectGrtGoodsDtlView.do?grt_goods_no={gid}",
-            "status": "공고중"
+            "start_dt": item.get("start_dt", "").strip(),
+            "end_dt": item.get("end_dt", "").strip(),
         })
     return parsed
 
