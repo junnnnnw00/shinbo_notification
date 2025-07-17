@@ -161,8 +161,15 @@ def initialize_fcm():
         return False
 
 # ==================== KOREG 스크래핑 ==================== #
+
+MAX_SCRAPE_ATTEMPTS = 5      # 한 사이클에 GET 5번
+RETRY_DELAY         = 2      # 실패했을 때 텀
+
 def scrape_koreg_announcements(region):
-    """정상 리스트 얻으면 list[dict], 실패면 None"""
+    """
+    성공한 시도 중 '가장 많은 공고'를 리턴.
+    - 리스트가 하나도 안 나오면 None
+    """
     s = requests.Session()
     s.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -170,58 +177,63 @@ def scrape_koreg_announcements(region):
     main_page_url = "https://untact.koreg.or.kr/web/lay1/program/S1T1C5/grtApp/selectGrtGoodsList.do"
     csrf_header_name = "X-CSRF-TOKEN"
 
-    for attempt in range(1, MAX_RETRY + 1):
+    best_items = []
+    for attempt in range(1, MAX_SCRAPE_ATTEMPTS + 1):
         try:
             # 1) 지역 세팅
             s.get(f"{region['set_region_url']}?cgfcd={region['cgfcd']}", timeout=30)
 
-            # 2) 메인 페이지에서 CSRF 토큰 캐기
-            main_res = s.get(main_page_url, timeout=30)
-            main_res.raise_for_status()
-            soup = BeautifulSoup(main_res.text, 'html.parser')
+            # 2) CSRF 토큰
+            soup = BeautifulSoup(s.get(main_page_url, timeout=30).text, 'html.parser')
             token_tag = soup.select_one('input[name="_csrf"]')
             if not token_tag:
-                raise ValueError("CSRF 토큰 없음")
+                raise ValueError("CSRF 토큰 못 찾음")
             csrf_token = token_tag['value']
 
-            # 3) AJAX POST
+            # 3) GET AJAX (params 사용)
             headers = {
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": main_page_url,
                 csrf_header_name: csrf_token
             }
-            data = {
+            params = {
                 "goodScptCd": "", "goods_chrt_cd_list": "", "untct_fbank_list": "",
                 "grt_sprt_lmt_amt": "", "startDate": "", "endDate": "", "keyWord": "",
                 "_csrf": csrf_token
             }
-            res = s.get(region['ajax_url'], headers=headers, data=data, timeout=30)
+            res = s.get(region['ajax_url'], headers=headers, params=params, timeout=30)
             res.raise_for_status()
-            json_data = res.json()
+            data = res.json()
+            items = data.get("list", [])
 
-            # 4) 결과 검증
-            items = json_data.get("list", [])
-            if not items:
-                raise ValueError("list 비어있음")
+            log(f"{region['name_kr']} 시도 {attempt}: {len(items)}건")
 
-            # 5) 파싱
-            return [
-                {
-                    "id": str(item.get("grt_goods_no", "")),
-                    "title": item.get("goods_nm", "").strip(),
-                    "link": f"https://untact.koreg.or.kr/web/lay1/program/S1T5C341/grtApp/selectGrtGoodsDtlView.do?grt_goods_no={item.get('grt_goods_no')}",
-                    "status": "공고중"
-                }
-                for item in items
-            ]
+            if len(items) > len(best_items):
+                best_items = items
 
         except Exception as e:
-            log(f"{region['name_kr']} 스크랩 실패 {attempt}/{MAX_RETRY} - {e}")
-            if attempt < MAX_RETRY:
-                time.sleep(RETRY_DELAY)
+            log(f"{region['name_kr']} 시도 {attempt} 실패 - {e}")
+            time.sleep(RETRY_DELAY)
 
-    # 전부 실패
-    return None
+    # 최종 검증
+    if not best_items:
+        return None
+
+    # 파싱 & 중복 제거
+    seen = set()
+    parsed = []
+    for item in best_items:
+        gid = str(item.get("grt_goods_no", ""))
+        if gid in seen:
+            continue
+        seen.add(gid)
+        parsed.append({
+            "id": gid,
+            "title": item.get("goods_nm", "").strip(),
+            "link": f"https://untact.koreg.or.kr/web/lay1/program/S1T5C341/grtApp/selectGrtGoodsDtlView.do?grt_goods_no={gid}",
+            "status": "공고중"
+        })
+    return parsed
 
 def scrape_html_announcements(region):  # 미사용
     return None
