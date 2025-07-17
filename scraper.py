@@ -183,11 +183,13 @@ def scrape_koreg_announcements(region):
             # 1) 지역 세팅
             s.get(f"{region['set_region_url']}?cgfcd={region['cgfcd']}", timeout=30)
 
-            # 2) CSRF 토큰
-            soup = BeautifulSoup(s.get(main_page_url, timeout=30).text, 'html.parser')
+            # 2) 메인 페이지에서 CSRF 토큰 캐기
+            main_res = s.get(main_page_url, timeout=30)
+            main_res.raise_for_status()
+            soup = BeautifulSoup(main_res.text, 'html.parser')
             token_tag = soup.select_one('input[name="_csrf"]')
             if not token_tag:
-                raise ValueError("CSRF 토큰 못 찾음")
+                raise ValueError("CSRF 토큰 없음")
             csrf_token = token_tag['value']
 
             # 3) GET AJAX (params 사용)
@@ -196,12 +198,12 @@ def scrape_koreg_announcements(region):
                 "Referer": main_page_url,
                 csrf_header_name: csrf_token
             }
-            params = {
+            data = {
                 "goodScptCd": "", "goods_chrt_cd_list": "", "untct_fbank_list": "",
                 "grt_sprt_lmt_amt": "", "startDate": "", "endDate": "", "keyWord": "",
                 "_csrf": csrf_token
             }
-            res = s.get(region['ajax_url'], headers=headers, params=params, timeout=30)
+            res = s.get(region['ajax_url'], headers=headers, data=data, timeout=30)
             res.raise_for_status()
             data = res.json()
             items = data.get("list", [])
